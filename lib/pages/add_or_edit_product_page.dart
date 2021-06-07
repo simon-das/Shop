@@ -35,7 +35,7 @@ class _AddOrEditProductPageState extends State<AddOrEditProductPage> {
 
     //creating new product
     final ProductModelProvider newProduct = ProductModelProvider(
-      id: product.id,
+      id: product == null ? null : product.id,
       title: title,
       description: description,
       imageUrl: imageUrl.value,
