@@ -35,28 +35,55 @@ class CartPage extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                       backgroundColor: Theme.of(context).primaryColor),
-                  FlatButton(
-                    onPressed: () {
-                      //add order
-                      Provider.of<OrderProvider>(context, listen: false)
-                          .addOrder(
-                              orderModel: OrderModel(
-                        orderId: DateTime.now().toString(),
-                        products: cartProvider.cartItems.values.toList(),
-                        amount: cartProvider.totalAmount,
-                        dateTime: DateTime.now(),
-                      ));
-
-                      //clear cart
-                      cartProvider.clearCart();
+                  Consumer<OrderProvider>(
+                    builder: (context, orderProvider, child) {
+                      return FlatButton(
+                        onPressed: cartProvider.cartItems.length == 0
+                            ? null
+                            : () {
+                                //add order
+                                Provider.of<OrderProvider>(context,
+                                        listen: false)
+                                    .addOrder(
+                                        orderModel: OrderModel(
+                                  orderId: DateTime.now().toString(),
+                                  products:
+                                      cartProvider.cartItems.values.toList(),
+                                  amount: cartProvider.totalAmount,
+                                  dateTime: DateTime.now(),
+                                ))
+                                    .then((response) {
+                                  if (response.statusCode == 200) {
+                                    //clear cart
+                                    cartProvider.clearCart();
+                                    Scaffold.of(context).showSnackBar(SnackBar(
+                                      content: Text('Order added!'),
+                                    ));
+                                  } else {
+                                    Scaffold.of(context).showSnackBar(SnackBar(
+                                      content: Text(
+                                          'Something went wrong! Please try again!'),
+                                    ));
+                                  }
+                                }).catchError((error) {
+                                  Scaffold.of(context).showSnackBar(SnackBar(
+                                    content: Text(
+                                        'Something went wrong! Please try again!'),
+                                  ));
+                                  print(error);
+                                });
+                              },
+                        child: orderProvider.isLoading
+                            ? CircularProgressIndicator()
+                            : Text(
+                                'Check Out',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                      );
                     },
-                    child: Text(
-                      'Check Out',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                    ),
                   )
                 ],
               ),
