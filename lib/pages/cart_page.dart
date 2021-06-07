@@ -73,7 +73,7 @@ class CartPage extends StatelessWidget {
                                   print(error);
                                 });
                               },
-                        child: orderProvider.isLoading
+                        child: orderProvider.isCheckOutLoading
                             ? CircularProgressIndicator()
                             : Text(
                                 'Check Out',
