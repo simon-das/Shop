@@ -9,19 +9,7 @@ import 'package:shop/widgets/badge.dart';
 
 enum FilterOptions { favorite, all }
 
-class HomePage extends StatefulWidget {
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    // TODO: implement initState
-    Provider.of<ProductProvider>(context, listen: false).fetchProducts();
-    super.initState();
-  }
-
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ProductProvider productProvider =

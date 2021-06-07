@@ -5,53 +5,19 @@ import 'package:http/http.dart' as http;
 import 'package:shop/providers/product_model_provider.dart';
 
 class ProductProvider extends ChangeNotifier {
-  static const String productsUrl =
-      'https://shop-8484f-default-rtdb.firebaseio.com/products.json';
+  static const String productsBaseUrl =
+      'https://shop-8484f-default-rtdb.firebaseio.com/products';
 
-  List<ProductModelProvider> _products = [
-    ProductModelProvider(
-      id: 'p1',
-      title: 'Red Shirt',
-      description: 'A red shirt - it is pretty red!',
-      price: 29.99,
-      imageUrl:
-          'https://cdn.pixabay.com/photo/2016/10/02/22/17/red-t-shirt-1710578_1280.jpg',
-    ),
-    ProductModelProvider(
-      id: 'p2',
-      title: 'Trousers',
-      description: 'A nice pair of trousers.',
-      price: 59.99,
-      imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Trousers%2C_dress_%28AM_1960.022-8%29.jpg/512px-Trousers%2C_dress_%28AM_1960.022-8%29.jpg',
-    ),
-    ProductModelProvider(
-      id: 'p3',
-      title: 'Yellow Scarf',
-      description: 'Warm and cozy - exactly what you need for the winter.',
-      price: 19.99,
-      imageUrl:
-          'https://live.staticflickr.com/4043/4438260868_cc79b3369d_z.jpg',
-    ),
-    ProductModelProvider(
-      id: 'p4',
-      title: 'A Pan',
-      description: 'Prepare any meal you want.',
-      price: 49.99,
-      imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
-    ),
-    ProductModelProvider(
-      id: 'p5',
-      title: 'Another Pan',
-      description: 'Meal you want.',
-      price: 29.99,
-      imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
-    ),
-  ];
+  List<ProductModelProvider> _products = [];
 
-  bool _isFavorite = false;
+  bool _isFavorite = false, _isLoading = true;
+
+  get isLoading => _isLoading;
+
+  set isLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
 
   bool get isFavorite => _isFavorite;
 
@@ -61,7 +27,9 @@ class ProductProvider extends ChangeNotifier {
   }
 
   Future<void> fetchProducts() async {
-    var response = await http.get(productsUrl);
+    _isLoading = true;
+    _products = [];
+    var response = await http.get(productsBaseUrl + '.json');
     var responseBody = json.decode(response.body) as Map<String, dynamic>;
     responseBody.forEach((productId, product) {
       _products.add(ProductModelProvider(
@@ -73,6 +41,10 @@ class ProductProvider extends ChangeNotifier {
         isFavorite: product['isFavorite'],
       ));
     });
+
+    _isLoading = false;
+
+    notifyListeners();
   }
 
   List<ProductModelProvider> get allProducts {
@@ -83,14 +55,22 @@ class ProductProvider extends ChangeNotifier {
     return _products.where((product) => product.isFavorite).toList();
   }
 
-  void removeProduct(String productId) {
-    _products.removeWhere((product) => product.id == productId);
-    notifyListeners();
+  Future<void> removeProduct(String productId) {
+    isLoading = true;
+    return http.delete(productsBaseUrl + '/$productId.json').then((response) {
+      if (response.statusCode == 200) {
+        _products.removeWhere((product) => product.id == productId);
+        notifyListeners();
+      }
+    }).catchError((error) {
+      print(error);
+    }).whenComplete(() => _isLoading = false);
   }
 
   void addProduct(ProductModelProvider productModelProvider) async {
+    isLoading = true;
     try {
-      final response = await http.post(productsUrl,
+      final response = await http.post(productsBaseUrl + '.json',
           body: json.encode({
             'title': productModelProvider.title,
             'imageUrl': productModelProvider.imageUrl,
@@ -99,8 +79,6 @@ class ProductProvider extends ChangeNotifier {
             'isFavorite': productModelProvider.isFavorite,
           }));
 
-      print(response.body);
-
       _products.add(ProductModelProvider(
         id: json.decode(response.body)['name'],
         price: productModelProvider.price,
@@ -108,16 +86,32 @@ class ProductProvider extends ChangeNotifier {
         imageUrl: productModelProvider.imageUrl,
         description: productModelProvider.description,
       ));
-      notifyListeners();
     } catch (error) {
       print(error);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
   void updateProduct(ProductModelProvider updatedProduct) {
-    final int index =
-        _products.indexWhere((product) => product.id == updatedProduct.id);
-    _products[index] = updatedProduct;
-    notifyListeners();
+    isLoading = true;
+    http
+        .patch(productsBaseUrl + '/${updatedProduct.id}.json',
+            body: json.encode({
+              'title': updatedProduct.title,
+              'imageUrl': updatedProduct.imageUrl,
+              'price': updatedProduct.price,
+              'isFavorite': updatedProduct.isFavorite,
+              'description': updatedProduct.description,
+            }))
+        .then((response) {
+      if (response.statusCode == 200) {
+        final int index =
+            _products.indexWhere((product) => product.id == updatedProduct.id);
+        _products[index] = updatedProduct;
+        notifyListeners();
+      }
+    }).whenComplete(() => _isLoading = false);
   }
 }
